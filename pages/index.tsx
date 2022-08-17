@@ -1,14 +1,6 @@
 import Head from 'next/head'
-import { useQuery } from 'react-query'
-
-const fetchUsers = async () => {
-  const response = await fetch('/api/users')
-
-  return response.json()
-}
 
 export default function Home() {
-  const { data } = useQuery('users', fetchUsers)
   return (
     <div>
       <Head>
@@ -17,8 +9,9 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main>Hello there</main>
-      {JSON.stringify(data)}
+      <main className="container flex-1 flex mx-auto p-4">
+        <h1 className="font-bold text-3xl">Coffee Recipes</h1>
+      </main>
     </div>
   )
 }
