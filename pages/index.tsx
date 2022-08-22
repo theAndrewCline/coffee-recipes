@@ -1,14 +1,22 @@
 import Head from 'next/head'
 import { signIn, useSession } from 'next-auth/react'
 import { useForm } from 'react-hook-form'
-import { useEffect } from 'react'
+import { trpc } from '../utils/trpc'
+
+function IndexPage({ email }: { email: string }) {
+  const hello = trpc.useQuery(['hello', { email }])
+  if (!hello.data) {
+    return <div>Loading...</div>
+  }
+  return (
+    <div>
+      <p>{hello.data.greeting}</p>
+    </div>
+  )
+}
 
 export default function Home() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm()
+  const { register, handleSubmit } = useForm<{ email: string }>()
 
   const { status, data } = useSession()
 
@@ -49,7 +57,10 @@ export default function Home() {
         )}
 
         {status === 'authenticated' && (
-          <h1>{'Hello there ' + data.user.email}</h1>
+          <>
+            <h1>{'Hello there ' + data.user?.email}</h1>
+            <IndexPage email={data.user?.email as string} />
+          </>
         )}
       </main>
     </div>
