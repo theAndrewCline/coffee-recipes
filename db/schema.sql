@@ -14,6 +14,28 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: account; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    type text,
+    provider text,
+    provider_account_id text,
+    refresh_token text,
+    access_token text,
+    expires_at integer,
+    token_type text,
+    scope text,
+    id_token text,
+    session_state text,
+    oauth_token_secret text,
+    oauth_token text
+);
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -23,42 +45,35 @@ CREATE TABLE public.schema_migrations (
 
 
 --
--- Name: user; Type: TABLE; Schema: public; Owner: -
+-- Name: session; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public."user" (
-    id integer NOT NULL,
-    email text NOT NULL,
-    name text NOT NULL,
-    email_verified timestamp without time zone NOT NULL
+CREATE TABLE public.session (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    expires timestamp without time zone NOT NULL,
+    session_token text NOT NULL,
+    user_id uuid NOT NULL
 );
 
 
 --
--- Name: user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: user; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.user_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.user_id_seq OWNED BY public."user".id;
+CREATE TABLE public."user" (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    email text NOT NULL,
+    name text NOT NULL,
+    email_verified timestamp without time zone
+);
 
 
 --
--- Name: user id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: account account_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public."user" ALTER COLUMN id SET DEFAULT nextval('public.user_id_seq'::regclass);
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_pkey PRIMARY KEY (id);
 
 
 --
@@ -67,6 +82,14 @@ ALTER TABLE ONLY public."user" ALTER COLUMN id SET DEFAULT nextval('public.user_
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.session
+    ADD CONSTRAINT session_pkey PRIMARY KEY (id);
 
 
 --
@@ -83,6 +106,22 @@ ALTER TABLE ONLY public."user"
 
 ALTER TABLE ONLY public."user"
     ADD CONSTRAINT user_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: account account_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: session session_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.session
+    ADD CONSTRAINT session_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --

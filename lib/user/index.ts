@@ -32,7 +32,7 @@ export type UpdateUserInput = z.infer<typeof userSchema>
 export const makeUserFunctions = (pool: DatabasePool) => ({
   async createUser(userInput: CreateUserInput) {
     const result = pool.one(sql.type(userSchema)`
-      INSERT INTO user (name, email, email_verified)
+      INSERT INTO public.user (name, email, email_verified)
       VALUES (${userInput.name}, ${userInput.email}, ${userInput.emailVerified})
       RETURNING id, email, name, email_verified;
     `)
@@ -42,7 +42,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
 
   async updateUser(userInput: UpdateUserInput) {
     const result = pool.one(sql.type(userSchema)`
-      UPDATE user
+      UPDATE public.user
       SET ${sql.join(
         Object.entries(userInput).map(([col, value]) => `${col} = ${value}`),
         sql.literalValue(', ')
@@ -56,7 +56,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
 
   async getUser(id: string) {
     const result = pool.one(sql.type(userSchema)`
-        SELECT * FROM user WHERE id = ${id};
+        SELECT * FROM public.user WHERE id = ${id};
     `)
 
     return result
@@ -64,7 +64,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
 
   async getUserByEmail(email: string) {
     const result = pool.one(sql.type(userSchema)`
-        SELECT * FROM user WHERE email = ${email};
+        SELECT * FROM public.user WHERE email = ${email};
     `)
 
     return result
@@ -72,7 +72,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
 
   async listUsers() {
     const result = pool.many(sql.type(userSchema)`
-        SELECT * FROM user;
+        SELECT * FROM public.user;
     `)
 
     return result
