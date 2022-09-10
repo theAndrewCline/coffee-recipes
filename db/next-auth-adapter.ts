@@ -40,11 +40,9 @@ export default function PostgresAdapter(
     },
 
     async getUserByEmail(email: string) {
-      const pool = await client
+      const { getUserByEmail } = makeUserFunctions(await client)
 
-      const result = await pool.one(sql.type(userSchema)`
-        SELECT * FROM "User" WHERE email = ${email};
-      `)
+      const result = await getUserByEmail(email)
 
       return adapterUser(result)
     },
