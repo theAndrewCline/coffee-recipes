@@ -3,20 +3,30 @@ import { DateTime } from 'luxon'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
 
-export const sessionSchema = z.object({
-  id: z.string()
-})
+export const sessionSchema = z
+  .object({
+    id: z.string(),
+    session_token: z.string(),
+    user_id: z.string(),
+    expires: z.string()
+  })
+  .transform((s) => ({
+    id: s.id,
+    sessionToken: s.session_token,
+    userId: s.user_id,
+    expires: DateTime.fromSQL(s.expires)
+  }))
 
 export type Session = z.infer<typeof sessionSchema>
 
-export const createSessionInputSchema = z.object({})
+export const createSessionInputSchema = z.string()
 
 export type CreateSessionInput = z.infer<typeof createSessionInputSchema>
 
 export type UpdateSessionInput = z.infer<typeof sessionSchema>
 
 export const makeSessionFunctions = (pool: DatabasePool) => ({
-  async createSession(sessionInput: CreateSessionInput) {
+  async createSession(userId: CreateSessionInput) {
     const result = pool.one(sql.type(sessionSchema)`
       INSERT INTO public.session ()
       VALUES ()
@@ -73,11 +83,23 @@ if (import.meta.vitest) {
 
     it('createSession', async () => {
       const id = randomUUID()
+      const userId = randomUUID()
+      const expireDateTime = DateTime.now()
+
+      const expectedResult: Session = {
+        id,
+        userId,
+        sessionToken: 'foobarbaz',
+        expires: expireDateTime
+      }
 
       const query = vi.fn(async () =>
         createMockQueryResult([
           {
-            id
+            id,
+            user_id: userId,
+            session_token: 'foobarbaz',
+            expires: expireDateTime.toSQL()
           }
         ])
       )
@@ -88,12 +110,9 @@ if (import.meta.vitest) {
 
       const { createSession } = makeSessionFunctions(pool)
 
-      const testSession = {}
+      const result = await createSession(userId)
 
-      const result = await createSession(testSession)
-
-      expect(result).toMatchObject(testSession)
-      expect(result.id).toEqual(id)
+      expect(result).toEqual(expectedResult)
     })
 
     it.todo('updateSession', async () => {
