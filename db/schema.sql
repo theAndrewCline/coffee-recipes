@@ -14,88 +14,6 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: Account; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."Account" (
-    id text NOT NULL,
-    "userId" text NOT NULL,
-    type text NOT NULL,
-    provider text NOT NULL,
-    "providerAccountId" text NOT NULL,
-    refresh_token text,
-    access_token text,
-    expires_at integer,
-    token_type text,
-    scope text,
-    id_token text,
-    session_state text
-);
-
-
---
--- Name: Recipe; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."Recipe" (
-    id text NOT NULL,
-    title text NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL,
-    "userId" text NOT NULL
-);
-
-
---
--- Name: RecipeStep; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."RecipeStep" (
-    id text NOT NULL,
-    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) without time zone NOT NULL,
-    title text NOT NULL,
-    "recipeId" text NOT NULL
-);
-
-
---
--- Name: Session; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."Session" (
-    id text NOT NULL,
-    "sessionToken" text NOT NULL,
-    "userId" text NOT NULL,
-    expires timestamp(3) without time zone NOT NULL
-);
-
-
---
--- Name: User; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."User" (
-    id text NOT NULL,
-    email text,
-    "emailVerified" timestamp(3) without time zone,
-    image text,
-    name text
-);
-
-
---
--- Name: VerificationToken; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."VerificationToken" (
-    identifier text NOT NULL,
-    token text NOT NULL,
-    expires timestamp(3) without time zone NOT NULL
-);
-
-
---
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -105,43 +23,42 @@ CREATE TABLE public.schema_migrations (
 
 
 --
--- Name: Account Account_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user; Type: TABLE; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public."Account"
-    ADD CONSTRAINT "Account_pkey" PRIMARY KEY (id);
-
-
---
--- Name: RecipeStep RecipeStep_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."RecipeStep"
-    ADD CONSTRAINT "RecipeStep_pkey" PRIMARY KEY (id);
+CREATE TABLE public."user" (
+    id integer NOT NULL,
+    email text NOT NULL,
+    name text NOT NULL,
+    email_verified timestamp without time zone NOT NULL
+);
 
 
 --
--- Name: Recipe Recipe_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public."Recipe"
-    ADD CONSTRAINT "Recipe_pkey" PRIMARY KEY (id);
-
-
---
--- Name: Session Session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Session"
-    ADD CONSTRAINT "Session_pkey" PRIMARY KEY (id);
+CREATE SEQUENCE public.user_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
 --
--- Name: User User_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public."User"
-    ADD CONSTRAINT "User_pkey" PRIMARY KEY (id);
+ALTER SEQUENCE public.user_id_seq OWNED BY public."user".id;
+
+
+--
+-- Name: user id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."user" ALTER COLUMN id SET DEFAULT nextval('public.user_id_seq'::regclass);
 
 
 --
@@ -153,70 +70,19 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: Account_provider_providerAccountId_key; Type: INDEX; Schema: public; Owner: -
+-- Name: user user_email_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON public."Account" USING btree (provider, "providerAccountId");
-
-
---
--- Name: Session_sessionToken_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "Session_sessionToken_key" ON public."Session" USING btree ("sessionToken");
+ALTER TABLE ONLY public."user"
+    ADD CONSTRAINT user_email_key UNIQUE (email);
 
 
 --
--- Name: User_email_key; Type: INDEX; Schema: public; Owner: -
+-- Name: user user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX "User_email_key" ON public."User" USING btree (email);
-
-
---
--- Name: VerificationToken_identifier_token_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON public."VerificationToken" USING btree (identifier, token);
-
-
---
--- Name: VerificationToken_token_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "VerificationToken_token_key" ON public."VerificationToken" USING btree (token);
-
-
---
--- Name: Account Account_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Account"
-    ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: RecipeStep RecipeStep_recipeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."RecipeStep"
-    ADD CONSTRAINT "RecipeStep_recipeId_fkey" FOREIGN KEY ("recipeId") REFERENCES public."Recipe"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: Recipe Recipe_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Recipe"
-    ADD CONSTRAINT "Recipe_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: Session Session_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Session"
-    ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY public."user"
+    ADD CONSTRAINT user_pkey PRIMARY KEY (id);
 
 
 --
@@ -229,5 +95,4 @@ ALTER TABLE ONLY public."Session"
 --
 
 INSERT INTO public.schema_migrations (version) VALUES
-    ('20220909220739'),
-    ('20220910045605');
+    ('20220909220739');
