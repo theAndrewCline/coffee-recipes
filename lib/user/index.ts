@@ -16,7 +16,7 @@ export const userSchema = z
     emailVerified: u.email_verified
   }))
 
-type User = z.infer<typeof userSchema>
+export type User = z.infer<typeof userSchema>
 
 export const createUserInputSchema = z.object({
   name: z.string(),
@@ -33,7 +33,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
     const result = pool.one(sql.type(userSchema)`
       INSERT INTO user (name, email, email_verified)
       VALUES (${userInput.name}, ${userInput.email}, ${userInput.emailVerified})
-      RETURNING id, email, name, email_verified
+      RETURNING id, email, name, email_verified;
     `)
 
     return result
@@ -47,7 +47,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
         sql.literalValue(', ')
       )}
       WHERE id = ${userInput.id}
-      RETURNING id, email, name, email_verified
+      RETURNING id, email, name, email_verified;
     `)
 
     return result
@@ -55,7 +55,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
 
   async getUser(id: number) {
     const result = pool.one(sql.type(userSchema)`
-        SELECT * FROM user WHERE id = ${id}
+        SELECT * FROM user WHERE id = ${id};
     `)
 
     return result
@@ -63,7 +63,15 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
 
   async getUserByEmail(email: string) {
     const result = pool.one(sql.type(userSchema)`
-        SELECT * FROM user WHERE email = ${email}
+        SELECT * FROM user WHERE email = ${email};
+    `)
+
+    return result
+  },
+
+  async listUsers() {
+    const result = pool.many(sql.type(userSchema)`
+        SELECT * FROM user;
     `)
 
     return result
@@ -202,6 +210,50 @@ if (import.meta.vitest) {
       const result = await getUserByEmail(testUser.email)
 
       expect(result).toMatchObject(testUser)
+    })
+
+    it('listUsers', async () => {
+      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
+
+      const users = [
+        {
+          id: 24,
+          name: 'Jack Cline',
+          email: 'jack.cline22@gmail.com',
+          email_verified: emailVerified
+        },
+        {
+          id: 22,
+          name: 'Andrew Cline',
+          email: 'andrew.cline77@gmail.com',
+          email_verified: emailVerified
+        },
+        {
+          id: 22,
+          name: 'Kristin Cline',
+          email: 'kristin.cline91@gmail.com',
+          email_verified: emailVerified
+        }
+      ]
+
+      const query = vi.fn(async () => createMockQueryResult(users))
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { listUsers } = makeUserFunctions(pool)
+
+      const result = await listUsers()
+
+      expect(result).toEqual(
+        users.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          emailVerified: u.email_verified
+        }))
+      )
     })
   })
 }
