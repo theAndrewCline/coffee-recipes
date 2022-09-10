@@ -7,7 +7,7 @@ export const userSchema = z
     id: z.number(),
     name: z.string(),
     email: z.string(),
-    email_verified: z.string()
+    email_verified: z.string().optional()
   })
   .transform((u) => ({
     id: u.id,
@@ -24,9 +24,9 @@ export const createUserInputSchema = z.object({
   emailVerified: z.string()
 })
 
-type CreateUserInput = z.infer<typeof createUserInputSchema>
+export type CreateUserInput = z.infer<typeof createUserInputSchema>
 
-type UpdateUserInput = z.infer<typeof userSchema>
+export type UpdateUserInput = z.infer<typeof userSchema>
 
 export const makeUserFunctions = (pool: DatabasePool) => ({
   async createUser(userInput: CreateUserInput) {

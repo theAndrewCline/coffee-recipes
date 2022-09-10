@@ -1,49 +1,27 @@
+import { DateTime } from 'luxon'
 import { Adapter, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
-
-const userSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string(),
-    email_verified: z.date()
-  })
-  .transform((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    emailVerified: u.email_verified
-  }))
+import { CreateUserInput, makeUserFunctions } from '../lib/user'
 
 export default function PostgresAdapter(
   client: Promise<DatabasePool>
 ): Adapter {
   return {
     async createUser(user: Omit<AdapterUser, 'id'>) {
-      const pool = await client
+      const { createUser } = makeUserFunctions(await client)
 
-      const result = await pool.query(
-        sql.type(userSchema)`
-          INSERT INTO "User" (
-            name,
-            email,
-            email_verified,
-            image,
-            username
-          )
-          VALUES (
-            ${user.name as string},
-            ${user.email as string},
-            ${user.email_verified as boolean},
-            ${(user?.image as string) || null},
-            ${user.username as string}
-          )
-          RETURNING id, name, email, email_verified, image;
-        `
-      )
+      const result = await createUser({
+        ...user
+      } as CreateUserInput)
 
-      return result.rows[0]
+      return {
+        ...result,
+        id: result.id.toString(),
+        emailVerified: result.emailVerified
+          ? DateTime.fromSQL(result.emailVerified).toJSDate()
+          : null
+      }
     },
     async getUser(id: string) {
       const pool = await client
