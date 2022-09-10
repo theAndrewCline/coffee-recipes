@@ -32,14 +32,13 @@ export default function PostgresAdapter(
     },
 
     async getUser(id: string) {
-      const pool = await client
+      const { getUser } = makeUserFunctions(await client)
 
-      const result = await pool.one(sql.type(userSchema)`
-        SELECT * FROM "User" WHERE id = ${id};
-      `)
+      const result = await getUser(parseInt(id))
 
       return adapterUser(result)
     },
+
     async getUserByEmail(email: string) {
       const pool = await client
 
@@ -49,6 +48,7 @@ export default function PostgresAdapter(
 
       return adapterUser(result)
     },
+
     async getUserByAccount({ providerAccountId, provider }) {
       const pool = await client
 
@@ -60,6 +60,7 @@ export default function PostgresAdapter(
 
       return adapterUser(result)
     },
+
     async updateUser(user) {
       const pool = await client
 
@@ -75,6 +76,7 @@ export default function PostgresAdapter(
 
       return adapterUser(result)
     },
+
     async deleteUser(userId) {
       const pool = await client
 
@@ -86,6 +88,7 @@ export default function PostgresAdapter(
 
       return adapterUser(result)
     },
+
     async linkAccount(account) {
       const pool = await client
 
