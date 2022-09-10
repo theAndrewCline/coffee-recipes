@@ -1,4 +1,3 @@
-import { Awaitable } from 'next-auth'
 import { Adapter, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
@@ -26,7 +25,7 @@ export default function PostgresAdapter(
 
       const result = await pool.query(
         sql.type(userSchema)`
-          INSERT INTO users (
+          INSERT INTO "User" (
             name,
             email,
             email_verified,
@@ -40,7 +39,7 @@ export default function PostgresAdapter(
             ${(user?.image as string) || null},
             ${user.username as string}
           )
-          RETURNING id, name, email, email_verified, image
+          RETURNING id, name, email, email_verified, image;
         `
       )
 
@@ -50,7 +49,7 @@ export default function PostgresAdapter(
       const pool = await client
 
       const result = await pool.one(sql.type(userSchema)`
-        SELECT * FROM users WHERE id = ${id};
+        SELECT * FROM "User" WHERE id = ${id};
       `)
 
       return result
@@ -59,25 +58,33 @@ export default function PostgresAdapter(
       const pool = await client
 
       const result = await pool.one(sql.type(userSchema)`
-        SELECT * FROM users WHERE email = ${email};
+        SELECT * FROM "User" WHERE email = ${email};
       `)
 
       return result
     },
     async getUserByAccount({ providerAccountId, provider }) {
-      return
+      const pool = await client
+
+      const result = await pool.one(sql.type(userSchema)`
+        SELECT FROM "Account"
+        WHERE providerAccountId = ${providerAccountId}
+        AND provider = ${provider};
+      `)
+
+      return result
     },
     async updateUser(user) {
       const pool = await client
 
       const result = await pool.one(sql.type(userSchema)`
-        UPDATE users
+        UPDATE "User"
         SET ${sql.join(
           Object.entries(user).map(([col, value]) => `${col} = ${value}`),
           sql.literalValue(', ')
         )}
         WHERE id = ${user.id as string};
-        RETURNING id, email, email_verified, name 
+        RETURNING id, email, email_verified, name;
       `)
 
       return result
@@ -86,9 +93,9 @@ export default function PostgresAdapter(
       const pool = await client
 
       const result = await pool.one(sql.type(userSchema)`
-        DELETE users
+        DELETE "User"
         WHERE id = ${userId};
-        RETURNING id, name, email, email_verified
+        RETURNING id, name, email, email_verified;
       `)
 
       return result
@@ -96,8 +103,17 @@ export default function PostgresAdapter(
     async linkAccount(account) {
       const pool = await client
 
-      const sql = `
-        INSERT INTO accounts 
+      await pool.one(sql.type(
+        z.object({
+          user_id: z.string(),
+          provider_id: z.string(),
+          provider_type: z.string(),
+          provider_account_id: z.string(),
+          access_token: z.string(),
+          access_token_expires: z.string()
+        })
+      )`
+        INSERT INTO "Account" 
         (
           user_id, 
           provider_id, 
@@ -106,25 +122,59 @@ export default function PostgresAdapter(
           access_token,
           access_token_expires
         )
-        VALUES ($1, $2, $3, $4, $5, to_timestamp($6))`
+        VALUES (
+          ${account.userId}
+          ${account.provider}
+          ${account.type}
+          ${account.providerAccountId}
+          ${account.access_token as string}
+          ${account.expires_at as number}
+        );
+      `)
 
-      const params = [
-        account.userId,
-        account.provider,
-        account.type,
-        account.providerAccountId,
-        account.access_token,
-        account.expires_at
-      ]
-
-      await client.query(sql, params)
       return account
     },
     async unlinkAccount({ providerAccountId, provider }) {
-      return
+      const pool = await client
+
+      await pool.one(sql.type(
+        z.object({
+          id: z.string()
+        })
+      )`
+        DELETE "Account"
+        WHERE providerAccountId = ${providerAccountId} && ${provider};
+      `)
     },
     async createSession({ sessionToken, userId, expires }) {
-      return
+      const pool = await client
+
+      const result = await pool.one(sql.type(
+        z.object({
+          id: z.string(),
+          sessionToken: z.string(),
+          userId: z.string(),
+          expires: z.date()
+        })
+      )`
+        INSERT INTO "Session" (
+          sessionToken,
+          userId,
+          expires
+        ) 
+        VALUES (
+          ${sessionToken},
+          ${userId},
+          ${expires.toUTCString()}
+        )
+        RETURNING
+          id,
+          sessionToken,
+          userId,
+          expires;
+      `)
+
+      return result
     },
     async getSessionAndUser(sessionToken) {
       return
