@@ -11,7 +11,6 @@ import {
 
 const adapterUser = (u: User): AdapterUser => ({
   ...u,
-  id: u.id.toString(),
   emailVerified: u.emailVerified
     ? DateTime.fromSQL(u.emailVerified).toJSDate()
     : null
@@ -34,7 +33,7 @@ export default function PostgresAdapter(
     async getUser(id: string) {
       const { getUser } = makeUserFunctions(await client)
 
-      const result = await getUser(parseInt(id))
+      const result = await getUser(id)
 
       return adapterUser(result)
     },
