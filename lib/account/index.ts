@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { DateTime } from 'luxon'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
+import { User } from '../user'
 
 export const accountSchema = z
   .object({
@@ -136,6 +137,15 @@ export const makeAccountFunctions = (pool: DatabasePool) => ({
     `)
 
     return result
+  },
+
+  async getAccountByUser(userId: string) {
+    const result = pool.one(sql.type(accountSchema)`
+        SELECT * FROM public.account
+        WHERE user_id = ${userId};
+    `)
+
+    return result
   }
 })
 
@@ -197,7 +207,7 @@ if (import.meta.vitest) {
       expect(result.id).toEqual(id)
     })
 
-    it.todo('updateAccount', async () => {
+    it('updateAccount', async () => {
       const id = randomUUID()
       const userId = randomUUID()
 
@@ -228,7 +238,7 @@ if (import.meta.vitest) {
             provider_account_id: testAccount.providerAccountId,
             refresh_token: 'foobarbaz',
             access_token: 'foobarbaz',
-            expires_at: DateTime.now().toUTC().toMillis(),
+            expires_at: testAccount.expires_at,
             token_type: 'foobarbaz',
             scope: 'web',
             id_token: 'foobarbaz',
@@ -250,13 +260,44 @@ if (import.meta.vitest) {
       expect(result).toMatchObject(testAccount)
     })
 
-    it.todo('getAccount', async () => {
+    it('getAccount', async () => {
       const id = randomUUID()
+      const userId = randomUUID()
+
+      const testAccount = {
+        id,
+        userId,
+        type: 'account',
+        provider: 'google',
+        providerAccountId: 'googleId',
+        refresh_token: 'foobarbaz',
+        access_token: 'foobarbaz',
+        expires_at: DateTime.now().toUTC().toMillis(),
+        token_type: 'foobarbaz',
+        scope: 'web',
+        id_token: 'foobarbaz',
+        session_state: 'foobarbaz',
+        oauth_token_secret: 'foobarbaz',
+        oauth_token: 'foobarbaz'
+      }
 
       const query = vi.fn(async () =>
         createMockQueryResult([
           {
-            id
+            id,
+            user_id: userId,
+            type: 'account',
+            provider: 'google',
+            provider_account_id: testAccount.providerAccountId,
+            refresh_token: 'foobarbaz',
+            access_token: 'foobarbaz',
+            expires_at: testAccount.expires_at,
+            token_type: 'foobarbaz',
+            scope: 'web',
+            id_token: 'foobarbaz',
+            session_state: 'foobarbaz',
+            oauth_token_secret: 'foobarbaz',
+            oauth_token: 'foobarbaz'
           }
         ])
       )
@@ -267,29 +308,83 @@ if (import.meta.vitest) {
 
       const { getAccount } = makeAccountFunctions(pool)
 
-      const testAccount = {
-        id
-      }
-
       const result = await getAccount(testAccount.id)
 
       expect(result).toMatchObject(testAccount)
     })
 
-    it.todo('listAccounts', async () => {
+    it('listAccounts', async () => {
       const accounts = [
         {
-          id: randomUUID()
+          id: randomUUID(),
+          userId: randomUUID(),
+          type: 'account',
+          provider: 'google',
+          providerAccountId: 'googleId',
+          refresh_token: 'foobarbaz',
+          access_token: 'foobarbaz',
+          expires_at: DateTime.now().toUTC().toMillis(),
+          token_type: 'foobarbaz',
+          scope: 'web',
+          id_token: 'foobarbaz',
+          session_state: 'foobarbaz',
+          oauth_token_secret: 'foobarbaz',
+          oauth_token: 'foobarbaz'
         },
         {
-          id: randomUUID()
+          id: randomUUID(),
+          userId: randomUUID(),
+          type: 'account',
+          provider: 'google',
+          providerAccountId: 'googleId',
+          refresh_token: 'foobarbaz',
+          access_token: 'foobarbaz',
+          expires_at: DateTime.now().toUTC().toMillis(),
+          token_type: 'foobarbaz',
+          scope: 'web',
+          id_token: 'foobarbaz',
+          session_state: 'foobarbaz',
+          oauth_token_secret: 'foobarbaz',
+          oauth_token: 'foobarbaz'
         },
         {
-          id: randomUUID()
+          id: randomUUID(),
+          userId: randomUUID(),
+          type: 'account',
+          provider: 'google',
+          providerAccountId: 'googleId',
+          refresh_token: 'foobarbaz',
+          access_token: 'foobarbaz',
+          expires_at: DateTime.now().toUTC().toMillis(),
+          token_type: 'foobarbaz',
+          scope: 'web',
+          id_token: 'foobarbaz',
+          session_state: 'foobarbaz',
+          oauth_token_secret: 'foobarbaz',
+          oauth_token: 'foobarbaz'
         }
       ]
 
-      const query = vi.fn(async () => createMockQueryResult(accounts))
+      const query = vi.fn(async () =>
+        createMockQueryResult(
+          accounts.map((a) => ({
+            id: a.id,
+            user_id: a.userId,
+            type: a.type,
+            provider: a.provider,
+            provider_account_id: a.providerAccountId,
+            refresh_token: a.refresh_token,
+            access_token: a.access_token,
+            expires_at: a.expires_at,
+            token_type: a.token_type,
+            scope: a.scope,
+            id_token: a.id_token,
+            session_state: a.session_state,
+            oauth_token_secret: a.oauth_token_secret,
+            oauth_token: a.oauth_token
+          }))
+        )
+      )
 
       const pool = createMockPool({
         query
@@ -299,11 +394,67 @@ if (import.meta.vitest) {
 
       const result = await listAccounts()
 
-      expect(result).toEqual(
-        accounts.map((u) => ({
-          id: u.id
-        }))
+      expect(result).toEqual(accounts)
+    })
+
+    it('getAccountByUser', async () => {
+      const id = randomUUID()
+      const userId = randomUUID()
+
+      const user: User = {
+        id: userId,
+        name: 'Andrew Cline',
+        email: 'andrew.cline77@gmail.com',
+        emailVerified: undefined
+      }
+
+      const testAccount = {
+        id,
+        userId,
+        type: 'account',
+        provider: 'google',
+        providerAccountId: 'googleId',
+        refresh_token: 'foobarbaz',
+        access_token: 'foobarbaz',
+        expires_at: DateTime.now().toUTC().toMillis(),
+        token_type: 'foobarbaz',
+        scope: 'web',
+        id_token: 'foobarbaz',
+        session_state: 'foobarbaz',
+        oauth_token_secret: 'foobarbaz',
+        oauth_token: 'foobarbaz'
+      }
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id,
+            user_id: userId,
+            type: 'account',
+            provider: 'google',
+            provider_account_id: testAccount.providerAccountId,
+            refresh_token: 'foobarbaz',
+            access_token: 'foobarbaz',
+            expires_at: testAccount.expires_at,
+            token_type: 'foobarbaz',
+            scope: 'web',
+            id_token: 'foobarbaz',
+            session_state: 'foobarbaz',
+            oauth_token_secret: 'foobarbaz',
+            oauth_token: 'foobarbaz'
+          }
+        ])
       )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { getAccountByUser } = makeAccountFunctions(pool)
+
+      const result = await getAccountByUser(userId)
+
+      expect(result).toMatchObject(testAccount)
     })
   })
 }
