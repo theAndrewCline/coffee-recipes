@@ -2,7 +2,20 @@ import { DateTime } from 'luxon'
 import { Adapter, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
-import { CreateUserInput, makeUserFunctions } from '../lib/user'
+import {
+  CreateUserInput,
+  makeUserFunctions,
+  User,
+  userSchema
+} from '../lib/user'
+
+const adapterUser = (u: User): AdapterUser => ({
+  ...u,
+  id: u.id.toString(),
+  emailVerified: u.emailVerified
+    ? DateTime.fromSQL(u.emailVerified).toJSDate()
+    : null
+})
 
 export default function PostgresAdapter(
   client: Promise<DatabasePool>
@@ -15,14 +28,9 @@ export default function PostgresAdapter(
         ...user
       } as CreateUserInput)
 
-      return {
-        ...result,
-        id: result.id.toString(),
-        emailVerified: result.emailVerified
-          ? DateTime.fromSQL(result.emailVerified).toJSDate()
-          : null
-      }
+      return adapterUser(result)
     },
+
     async getUser(id: string) {
       const pool = await client
 
@@ -30,7 +38,7 @@ export default function PostgresAdapter(
         SELECT * FROM "User" WHERE id = ${id};
       `)
 
-      return result
+      return adapterUser(result)
     },
     async getUserByEmail(email: string) {
       const pool = await client
@@ -39,7 +47,7 @@ export default function PostgresAdapter(
         SELECT * FROM "User" WHERE email = ${email};
       `)
 
-      return result
+      return adapterUser(result)
     },
     async getUserByAccount({ providerAccountId, provider }) {
       const pool = await client
@@ -50,7 +58,7 @@ export default function PostgresAdapter(
         AND provider = ${provider};
       `)
 
-      return result
+      return adapterUser(result)
     },
     async updateUser(user) {
       const pool = await client
@@ -65,7 +73,7 @@ export default function PostgresAdapter(
         RETURNING id, email, email_verified, name;
       `)
 
-      return result
+      return adapterUser(result)
     },
     async deleteUser(userId) {
       const pool = await client
@@ -76,7 +84,7 @@ export default function PostgresAdapter(
         RETURNING id, name, email, email_verified;
       `)
 
-      return result
+      return adapterUser(result)
     },
     async linkAccount(account) {
       const pool = await client
