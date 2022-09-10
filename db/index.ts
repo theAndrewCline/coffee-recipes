@@ -1,3 +1,3 @@
-import { PrismaClient } from '@prisma/client'
+import PostgresAdapter from './next-auth-adapter'
 
-export const prisma = new PrismaClient()
+export { PostgresAdapter }

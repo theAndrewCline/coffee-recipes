@@ -1,10 +1,18 @@
 import NextAuth from 'next-auth'
 import EmailProvider from 'next-auth/providers/email'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import { prisma } from '../../../db'
+import { PostgresAdapter } from '../../../db'
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  user: 'postgres',
+  host: 'localhost',
+  database: 'default',
+  password: 'postgres',
+  port: 5432
+})
 
 export default NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PostgresAdapter(pool, {}) as any,
 
   providers: [
     EmailProvider({
