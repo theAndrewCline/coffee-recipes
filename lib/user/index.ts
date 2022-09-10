@@ -51,6 +51,14 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
     `)
 
     return result
+  },
+
+  async getUser(id: number) {
+    const result = pool.one(sql.type(userSchema)`
+        SELECT * FROM user WHERE id = ${id}
+    `)
+
+    return result
   }
 })
 
@@ -122,7 +130,38 @@ if (import.meta.vitest) {
       const result = await updateUser(testUser)
 
       expect(result).toMatchObject(testUser)
-      expect(result.id).toEqual(24)
+    })
+
+    it('getUser', async () => {
+      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id: 24,
+            name: 'Jack Cline',
+            email: 'jack.cline22@gmail.com',
+            email_verified: emailVerified
+          }
+        ])
+      )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { getUser } = makeUserFunctions(pool)
+
+      const testUser = {
+        id: 24,
+        name: 'Jack Cline',
+        email: 'jack.cline22@gmail.com',
+        emailVerified
+      }
+
+      const result = await getUser(testUser.id)
+
+      expect(result).toMatchObject(testUser)
     })
   })
 }
