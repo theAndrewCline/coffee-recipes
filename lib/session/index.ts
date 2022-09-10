@@ -19,18 +19,22 @@ export const sessionSchema = z
 
 export type Session = z.infer<typeof sessionSchema>
 
-export const createSessionInputSchema = z.string()
+export const createSessionInputSchema = z.object({
+  sessionToken: z.string(),
+  userId: z.string(),
+  expires: z.string()
+})
 
 export type CreateSessionInput = z.infer<typeof createSessionInputSchema>
 
 export type UpdateSessionInput = z.infer<typeof sessionSchema>
 
 export const makeSessionFunctions = (pool: DatabasePool) => ({
-  async createSession(userId: CreateSessionInput) {
+  async createSession({ userId, sessionToken, expires }: CreateSessionInput) {
     const result = pool.one(sql.type(sessionSchema)`
-      INSERT INTO public.session ()
-      VALUES ()
-      RETURNING id;
+      INSERT INTO public.session (user_id, session_token, expires)
+      VALUES (${userId}, ${sessionToken}, ${expires})
+      RETURNING id, session_token, expires;
     `)
 
     return result
@@ -84,13 +88,14 @@ if (import.meta.vitest) {
     it('createSession', async () => {
       const id = randomUUID()
       const userId = randomUUID()
-      const expireDateTime = DateTime.now()
+      const expires = DateTime.now()
+      const sessionToken = 'foobarbaz'
 
       const expectedResult: Session = {
         id,
         userId,
-        sessionToken: 'foobarbaz',
-        expires: expireDateTime
+        sessionToken,
+        expires
       }
 
       const query = vi.fn(async () =>
@@ -98,8 +103,8 @@ if (import.meta.vitest) {
           {
             id,
             user_id: userId,
-            session_token: 'foobarbaz',
-            expires: expireDateTime.toSQL()
+            session_token: sessionToken,
+            expires: expires.toSQL()
           }
         ])
       )
@@ -110,7 +115,11 @@ if (import.meta.vitest) {
 
       const { createSession } = makeSessionFunctions(pool)
 
-      const result = await createSession(userId)
+      const result = await createSession({
+        userId,
+        sessionToken,
+        expires: expires.toSQL()
+      })
 
       expect(result).toEqual(expectedResult)
     })
