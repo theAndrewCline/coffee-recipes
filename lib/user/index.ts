@@ -24,13 +24,30 @@ export const createUserInputSchema = z.object({
   emailVerified: z.string()
 })
 
-type UserInput = z.infer<typeof createUserInputSchema>
+type CreateUserInput = z.infer<typeof createUserInputSchema>
+
+type UpdateUserInput = z.infer<typeof userSchema>
 
 export const makeUserFunctions = (pool: DatabasePool) => ({
-  async createUser(userInput: UserInput) {
+  async createUser(userInput: CreateUserInput) {
     const result = pool.one(sql.type(userSchema)`
-      INSERT INTO users (name, email, email_verified)
+      INSERT INTO user (name, email, email_verified)
       VALUES (${userInput.name}, ${userInput.email}, ${userInput.emailVerified})
+      RETURNING id, email, name, email_verified
+    `)
+
+    return result
+  },
+
+  async updateUser(userInput: UpdateUserInput) {
+    const result = pool.one(sql.type(userSchema)`
+      UPDATE user
+      SET ${sql.join(
+        Object.entries(userInput).map(([col, value]) => `${col} = ${value}`),
+        sql.literalValue(', ')
+      )}
+      WHERE id = ${userInput.id}
+      RETURNING id, email, name, email_verified
     `)
 
     return result
@@ -70,6 +87,39 @@ if (import.meta.vitest) {
       }
 
       const result = await createUser(testUser)
+
+      expect(result).toMatchObject(testUser)
+      expect(result.id).toEqual(24)
+    })
+
+    it('updateUser', async () => {
+      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id: 24,
+            name: 'Jack Cline',
+            email: 'jack.cline22@gmail.com',
+            email_verified: emailVerified
+          }
+        ])
+      )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { updateUser } = makeUserFunctions(pool)
+
+      const testUser = {
+        id: 24,
+        name: 'Jack Cline',
+        email: 'jack.cline22@gmail.com',
+        emailVerified
+      }
+
+      const result = await updateUser(testUser)
 
       expect(result).toMatchObject(testUser)
       expect(result.id).toEqual(24)
