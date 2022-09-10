@@ -48,7 +48,7 @@ export const makeSessionFunctions = (pool: DatabasePool) => ({
         sql.literalValue(', ')
       )}
       WHERE id = ${sessionInput.id}
-      RETURNING id, email, name, email_verified;
+      RETURNING id, user_id, session_token, expires;
     `)
 
     return result
@@ -57,14 +57,6 @@ export const makeSessionFunctions = (pool: DatabasePool) => ({
   async getSession(id: string) {
     const result = pool.one(sql.type(sessionSchema)`
         SELECT * FROM public.session WHERE id = ${id};
-    `)
-
-    return result
-  },
-
-  async getSessionByEmail(email: string) {
-    const result = pool.one(sql.type(sessionSchema)`
-        SELECT * FROM public.session WHERE email = ${email};
     `)
 
     return result
@@ -124,17 +116,26 @@ if (import.meta.vitest) {
       expect(result).toEqual(expectedResult)
     })
 
-    it.todo('updateSession', async () => {
+    it('updateSession', async () => {
       const id = randomUUID()
-      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
+      const userId = randomUUID()
+      const expires = DateTime.now()
+      const sessionToken = 'foobarbaz'
+
+      const expectedResult: Session = {
+        id,
+        userId,
+        sessionToken,
+        expires
+      }
 
       const query = vi.fn(async () =>
         createMockQueryResult([
           {
             id,
-            name: 'Jack Cline',
-            email: 'jack.cline22@gmail.com',
-            email_verified: emailVerified
+            user_id: userId,
+            session_token: sessionToken,
+            expires: expires.toSQL()
           }
         ])
       )
@@ -145,29 +146,27 @@ if (import.meta.vitest) {
 
       const { updateSession } = makeSessionFunctions(pool)
 
-      const testSession = {
+      const result = await updateSession({
         id,
-        name: 'Jack Cline',
-        email: 'jack.cline22@gmail.com',
-        emailVerified
-      }
-
-      const result = await updateSession(testSession)
-
-      expect(result).toMatchObject(testSession)
+        userId,
+        sessionToken,
+        expires: expires
+      })
     })
 
-    it.todo('getSession', async () => {
+    it('getSession', async () => {
       const id = randomUUID()
-      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
+      const userId = randomUUID()
+      const expires = DateTime.now()
+      const sessionToken = 'foobarbaz'
 
       const query = vi.fn(async () =>
         createMockQueryResult([
           {
             id,
-            name: 'Jack Cline',
-            email: 'jack.cline22@gmail.com',
-            email_verified: emailVerified
+            user_id: userId,
+            session_token: sessionToken,
+            expires: expires.toSQL()
           }
         ])
       )
@@ -180,9 +179,9 @@ if (import.meta.vitest) {
 
       const testSession = {
         id,
-        name: 'Jack Cline',
-        email: 'jack.cline22@gmail.com',
-        emailVerified
+        userId,
+        sessionToken,
+        expires
       }
 
       const result = await getSession(testSession.id)
@@ -190,31 +189,38 @@ if (import.meta.vitest) {
       expect(result).toMatchObject(testSession)
     })
 
-    it.todo('listSessions', async () => {
-      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
-
+    it('listSessions', async () => {
       const sessions = [
         {
           id: randomUUID(),
-          name: 'Jack Cline',
-          email: 'jack.cline22@gmail.com',
-          email_verified: emailVerified
+          userId: randomUUID(),
+          expires: DateTime.now(),
+          sessionToken: 'foobarbaz'
         },
         {
           id: randomUUID(),
-          name: 'Andrew Cline',
-          email: 'andrew.cline77@gmail.com',
-          email_verified: emailVerified
+          userId: randomUUID(),
+          expires: DateTime.now(),
+          sessionToken: 'foobarbaz'
         },
         {
           id: randomUUID(),
-          name: 'Kristin Cline',
-          email: 'kristin.cline91@gmail.com',
-          email_verified: emailVerified
+          userId: randomUUID(),
+          expires: DateTime.now(),
+          sessionToken: 'foobarbaz'
         }
       ]
 
-      const query = vi.fn(async () => createMockQueryResult(sessions))
+      const query = vi.fn(async () =>
+        createMockQueryResult(
+          sessions.map((s) => ({
+            id: s.id,
+            user_id: s.userId,
+            expires: s.expires.toSQL(),
+            session_token: s.sessionToken
+          }))
+        )
+      )
 
       const pool = createMockPool({
         query
@@ -224,14 +230,7 @@ if (import.meta.vitest) {
 
       const result = await listSessions()
 
-      expect(result).toEqual(
-        sessions.map((u) => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          emailVerified: u.email_verified
-        }))
-      )
+      expect(result).toEqual(sessions)
     })
   })
 }
