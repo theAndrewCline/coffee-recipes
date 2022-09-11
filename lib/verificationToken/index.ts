@@ -11,7 +11,6 @@ export const verificationSchema = z
     expires: z.string()
   })
   .transform((s) => ({
-    id: s.id,
     token: s.token,
     identifier: s.identifier,
     expires: DateTime.fromSQL(s.expires)
@@ -59,7 +58,7 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
         ),
         sql.literalValue(', ')
       )}
-      WHERE id = ${verificationInput.id as string}
+      WHERE identifier = ${verificationInput.identifier as string}
       RETURNING id, identifier, token, expires;
     `)
 
@@ -74,10 +73,10 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
     return result
   },
 
-  async deleteVerificationToken(id: string) {
+  async deleteVerificationToken(identifier: string) {
     const result = pool.one(sql.type(verificationSchema)`
       DELETE FROM public.verification
-      WHERE id = ${id}
+      WHERE identifier = ${identifier}
       RETURNING id, identifier, token, expires;
     `)
 
@@ -106,7 +105,6 @@ if (import.meta.vitest) {
       const token = 'foobarbaz'
 
       const expectedResult: VerificationToken = {
-        id,
         identifier,
         token,
         expires
@@ -145,7 +143,6 @@ if (import.meta.vitest) {
       const token = 'foobarbaz'
 
       const expectedResult: VerificationToken = {
-        id,
         identifier,
         token,
         expires
@@ -169,7 +166,6 @@ if (import.meta.vitest) {
       const { updateVerificationToken } = makeVerificationTokenFunctions(pool)
 
       const result = await updateVerificationToken({
-        id,
         identifier,
         token,
         expires: expires

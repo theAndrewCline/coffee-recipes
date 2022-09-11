@@ -1,9 +1,14 @@
 import { DateTime } from 'luxon'
-import { Adapter, AdapterSession, AdapterUser } from 'next-auth/adapters'
-import { DatabasePool, sql } from 'slonik'
-import { z } from 'zod'
+import {
+  Adapter,
+  AdapterSession,
+  AdapterUser,
+  VerificationToken
+} from 'next-auth/adapters'
+import { DatabasePool } from 'slonik'
 import { makeSessionFunctions, Session } from '../lib/session'
 import { CreateUserInput, makeUserFunctions, User } from '../lib/user'
+import { makeVerificationTokenFunctions } from '../lib/verificationToken'
 
 const adapterUser = (u: User): AdapterUser => ({
   ...u,
@@ -125,11 +130,31 @@ export default function PostgresAdapter(
     },
 
     async createVerificationToken({ identifier, expires, token }) {
-      return
+      const pool = await client
+
+      const { createVerificationToken } = makeVerificationTokenFunctions(pool)
+      const result = await createVerificationToken({
+        identifier,
+        expires: expires.toISOString(),
+        token
+      })
+
+      return {
+        ...result,
+        expires: result.expires.toJSDate()
+      }
     },
 
-    async useVerificationToken({ identifier, token }) {
-      return
+    async useVerificationToken({ identifier }) {
+      const pool = await client
+
+      const { deleteVerificationToken } = makeVerificationTokenFunctions(pool)
+      const result = await deleteVerificationToken(identifier)
+
+      return {
+        ...result,
+        expires: result.expires.toJSDate()
+      }
     }
   }
 }
