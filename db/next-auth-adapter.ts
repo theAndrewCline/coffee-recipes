@@ -1,8 +1,8 @@
 import { DateTime } from 'luxon'
-import { Adapter, AdapterUser } from 'next-auth/adapters'
+import { Adapter, AdapterSession, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
-import { makeSessionFunctions } from '../lib/session'
+import { makeSessionFunctions, Session } from '../lib/session'
 import { CreateUserInput, makeUserFunctions, User } from '../lib/user'
 
 const adapterUser = (u: User): AdapterUser => ({
@@ -10,6 +10,11 @@ const adapterUser = (u: User): AdapterUser => ({
   emailVerified: u.emailVerified
     ? DateTime.fromSQL(u.emailVerified).toJSDate()
     : null
+})
+
+const adapterSession = (s: Session): AdapterSession => ({
+  ...s,
+  expires: s.expires.toJSDate()
 })
 
 export default function PostgresAdapter(
@@ -77,23 +82,36 @@ export default function PostgresAdapter(
         expires: expires.toISOString()
       })
 
+      return adapterSession(result)
+    },
+
+    async getSessionAndUser(sessionToken) {
+      const pool = await client
+
+      const { getSessionByToken } = makeSessionFunctions(pool)
+      const session = await getSessionByToken(sessionToken)
+
+      const { getUser } = makeUserFunctions(pool)
+      const user = await getUser(session.userId)
+
       return {
-        ...result,
-        expires: result.expires.toJSDate()
+        session: adapterSession(session),
+        user: adapterUser(user)
       }
     },
-    async getSessionAndUser(sessionToken) {
-      return
-    },
+
     async updateSession({ sessionToken }) {
       return
     },
+
     async deleteSession(sessionToken) {
       return
     },
+
     async createVerificationToken({ identifier, expires, token }) {
       return
     },
+
     async useVerificationToken({ identifier, token }) {
       return
     }
