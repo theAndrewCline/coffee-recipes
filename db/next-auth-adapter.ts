@@ -3,12 +3,7 @@ import { Adapter, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
 import { makeSessionFunctions } from '../lib/session'
-import {
-  CreateUserInput,
-  makeUserFunctions,
-  User,
-  userSchema
-} from '../lib/user'
+import { CreateUserInput, makeUserFunctions, User } from '../lib/user'
 
 const adapterUser = (u: User): AdapterUser => ({
   ...u,
@@ -69,24 +64,9 @@ export default function PostgresAdapter(
       // return adapterUser(result)
     },
 
-    async linkAccount(account) {
-      const pool = await client
+    async linkAccount(account) {},
 
-      return account
-    },
-
-    async unlinkAccount({ providerAccountId, provider }) {
-      const pool = await client
-
-      await pool.one(sql.type(
-        z.object({
-          id: z.string()
-        })
-      )`
-        DELETE "Account"
-        WHERE providerAccountId = ${providerAccountId} && ${provider};
-      `)
-    },
+    async unlinkAccount({ providerAccountId, provider }) {},
 
     async createSession({ sessionToken, userId, expires }) {
       const { createSession } = makeSessionFunctions(await client)

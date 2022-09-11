@@ -265,7 +265,10 @@ if (import.meta.vitest) {
         emailVerified
       }
 
-      const result = await getUserByAccount(testUser.email)
+      const result = await getUserByAccount({
+        providerAccountId: 'foo',
+        provider: 'google'
+      })
 
       expect(result).toMatchObject(testUser)
     })

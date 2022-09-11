@@ -62,6 +62,14 @@ export const makeSessionFunctions = (pool: DatabasePool) => ({
     return result
   },
 
+  async getSessionByToken(token: string) {
+    const result = pool.one(sql.type(sessionSchema)`
+        SELECT * FROM public.session WHERE session_token = ${token};
+    `)
+
+    return result
+  },
+
   async listSessions() {
     const result = pool.many(sql.type(sessionSchema)`
         SELECT * FROM public.session;
@@ -155,6 +163,76 @@ if (import.meta.vitest) {
     })
 
     it('getSession', async () => {
+      const id = randomUUID()
+      const userId = randomUUID()
+      const expires = DateTime.now()
+      const sessionToken = 'foobarbaz'
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id,
+            user_id: userId,
+            session_token: sessionToken,
+            expires: expires.toSQL()
+          }
+        ])
+      )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { getSession } = makeSessionFunctions(pool)
+
+      const testSession = {
+        id,
+        userId,
+        sessionToken,
+        expires
+      }
+
+      const result = await getSession(testSession.id)
+
+      expect(result).toMatchObject(testSession)
+    })
+
+    it('getSessionByToken', async () => {
+      const id = randomUUID()
+      const userId = randomUUID()
+      const expires = DateTime.now()
+      const sessionToken = 'foobarbaz'
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id,
+            user_id: userId,
+            session_token: sessionToken,
+            expires: expires.toSQL()
+          }
+        ])
+      )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { getSessionByToken } = makeSessionFunctions(pool)
+
+      const testSession = {
+        id,
+        userId,
+        sessionToken,
+        expires
+      }
+
+      const result = await getSessionByToken(testSession.sessionToken)
+
+      expect(result).toMatchObject(testSession)
+    })
+
+    it('getSessionAndUser', async () => {
       const id = randomUUID()
       const userId = randomUUID()
       const expires = DateTime.now()
