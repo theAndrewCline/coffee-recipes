@@ -69,6 +69,18 @@ CREATE TABLE public."user" (
 
 
 --
+-- Name: verification_token; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.verification_token (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    identifier text NOT NULL,
+    token text NOT NULL,
+    expires timestamp without time zone NOT NULL
+);
+
+
+--
 -- Name: account account_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -106,6 +118,14 @@ ALTER TABLE ONLY public."user"
 
 ALTER TABLE ONLY public."user"
     ADD CONSTRAINT user_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: verification_token verification_token_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.verification_token
+    ADD CONSTRAINT verification_token_pkey PRIMARY KEY (id);
 
 
 --

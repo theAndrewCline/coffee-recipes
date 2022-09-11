@@ -31,4 +31,10 @@ CREATE TABLE IF NOT EXISTS public.session (
   user_id uuid NOT NULL REFERENCES public.user(id) ON delete cascade
 );
 
+CREATE TABLE IF NOT EXISTS public.verification_token (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  identifier text NOT NULL,
+  token text NOT NULL,
+  expires timestamp NOT NULL
+);
 -- migrate:down
