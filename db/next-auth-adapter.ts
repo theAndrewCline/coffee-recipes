@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { Adapter, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
+import { makeSessionFunctions } from '../lib/session'
 import {
   CreateUserInput,
   makeUserFunctions,
@@ -47,79 +48,33 @@ export default function PostgresAdapter(
     },
 
     async getUserByAccount({ providerAccountId, provider }) {
-      const pool = await client
+      const { getUserByAccount } = makeUserFunctions(await client)
 
-      const result = await pool.one(sql.type(userSchema)`
-        SELECT FROM "Account"
-        WHERE providerAccountId = ${providerAccountId}
-        AND provider = ${provider};
-      `)
+      const result = await getUserByAccount({ providerAccountId, provider })
 
       return adapterUser(result)
     },
 
     async updateUser(user) {
-      const pool = await client
+      const { updateUser } = makeUserFunctions(await client)
 
-      const result = await pool.one(sql.type(userSchema)`
-        UPDATE "User"
-        SET ${sql.join(
-          Object.entries(user).map(([col, value]) => `${col} = ${value}`),
-          sql.literalValue(', ')
-        )}
-        WHERE id = ${user.id as string};
-        RETURNING id, email, email_verified, name;
-      `)
+      const result = await updateUser(user as Partial<User>)
 
       return adapterUser(result)
     },
 
     async deleteUser(userId) {
-      const pool = await client
-
-      const result = await pool.one(sql.type(userSchema)`
-        DELETE "User"
-        WHERE id = ${userId};
-        RETURNING id, name, email, email_verified;
-      `)
-
-      return adapterUser(result)
+      // const { deleteUser } = makeUserFunctions(await client)
+      // const result = await deleteUser(userId)
+      // return adapterUser(result)
     },
 
     async linkAccount(account) {
       const pool = await client
 
-      await pool.one(sql.type(
-        z.object({
-          user_id: z.string(),
-          provider_id: z.string(),
-          provider_type: z.string(),
-          provider_account_id: z.string(),
-          access_token: z.string(),
-          access_token_expires: z.string()
-        })
-      )`
-        INSERT INTO "Account" 
-        (
-          user_id, 
-          provider_id, 
-          provider_type, 
-          provider_account_id, 
-          access_token,
-          access_token_expires
-        )
-        VALUES (
-          ${account.userId}
-          ${account.provider}
-          ${account.type}
-          ${account.providerAccountId}
-          ${account.access_token as string}
-          ${account.expires_at as number}
-        );
-      `)
-
       return account
     },
+
     async unlinkAccount({ providerAccountId, provider }) {
       const pool = await client
 
@@ -132,35 +87,20 @@ export default function PostgresAdapter(
         WHERE providerAccountId = ${providerAccountId} && ${provider};
       `)
     },
+
     async createSession({ sessionToken, userId, expires }) {
-      const pool = await client
+      const { createSession } = makeSessionFunctions(await client)
 
-      const result = await pool.one(sql.type(
-        z.object({
-          id: z.string(),
-          sessionToken: z.string(),
-          userId: z.string(),
-          expires: z.date()
-        })
-      )`
-        INSERT INTO "Session" (
-          sessionToken,
-          userId,
-          expires
-        ) 
-        VALUES (
-          ${sessionToken},
-          ${userId},
-          ${expires.toUTCString()}
-        )
-        RETURNING
-          id,
-          sessionToken,
-          userId,
-          expires;
-      `)
+      const result = await createSession({
+        sessionToken,
+        userId,
+        expires: expires.toISOString()
+      })
 
-      return result
+      return {
+        ...result,
+        expires: result.expires.toJSDate()
+      }
     },
     async getSessionAndUser(sessionToken) {
       return

@@ -10,7 +10,7 @@ export const accountSchema = z
     user_id: z.string().optional(),
     type: z.string(),
     provider: z.string(),
-    provider_account_id: z.string().optional(),
+    provider_account_id: z.string(),
     refresh_token: z.string(),
     access_token: z.string(),
     expires_at: z.number(),
@@ -21,18 +21,22 @@ export const accountSchema = z
     oauth_token_secret: z.string(),
     oauth_token: z.string()
   })
-  .transform((a) => {
-    const account = {
-      ...a,
-      userId: a.user_id,
-      providerAccountId: a.provider_account_id
-    }
-
-    delete account.provider_account_id
-    delete account.user_id
-
-    return account
-  })
+  .transform((a) => ({
+    id: a.id,
+    userId: a.user_id,
+    type: a.type,
+    provider: a.provider,
+    providerAccountId: a.provider_account_id,
+    refresh_token: a.refresh_token,
+    access_token: a.access_token,
+    expires_at: a.expires_at,
+    token_type: a.token_type,
+    scope: a.scope,
+    id_token: a.id_token,
+    session_state: a.session_state,
+    oauth_token_secret: a.oauth_token_secret,
+    oauth_token: a.oauth_token
+  }))
 
 export type Account = z.infer<typeof accountSchema>
 

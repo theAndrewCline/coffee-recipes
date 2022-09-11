@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { DateTime } from 'luxon'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
+import { Account } from '../account'
 
 export const userSchema = z
   .object({
@@ -27,7 +28,7 @@ export const createUserInputSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserInputSchema>
 
-export type UpdateUserInput = z.infer<typeof userSchema>
+export type UpdateUserInput = Partial<z.infer<typeof userSchema>>
 
 export const makeUserFunctions = (pool: DatabasePool) => ({
   async createUser(userInput: CreateUserInput) {
@@ -65,6 +66,25 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
   async getUserByEmail(email: string) {
     const result = pool.one(sql.type(userSchema)`
         SELECT * FROM public.user WHERE email = ${email};
+    `)
+
+    return result
+  },
+
+  async getUserByAccount({
+    providerAccountId,
+    provider
+  }: {
+    providerAccountId: string
+    provider: string
+  }) {
+    const result = pool.one(sql.type(userSchema)`
+      SELECT u.id, u.name, u.email, u.emailVerified
+      FROM account as a
+      JOIN user as u ON u.id = a.user_id
+      WHERE
+        a.providerAccountId = ${providerAccountId}
+        && a.provider = ${provider};
     `)
 
     return result
@@ -213,6 +233,39 @@ if (import.meta.vitest) {
       }
 
       const result = await getUserByEmail(testUser.email)
+
+      expect(result).toMatchObject(testUser)
+    })
+
+    it('getUserByAccount', async () => {
+      const id = randomUUID()
+      const emailVerified = DateTime.fromISO('2020-10-10').toSQL()
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id,
+            name: 'Jack Cline',
+            email: 'jack.cline22@gmail.com',
+            email_verified: emailVerified
+          }
+        ])
+      )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { getUserByAccount } = makeUserFunctions(pool)
+
+      const testUser = {
+        id,
+        name: 'Jack Cline',
+        email: 'jack.cline22@gmail.com',
+        emailVerified
+      }
+
+      const result = await getUserByAccount(testUser.email)
 
       expect(result).toMatchObject(testUser)
     })
