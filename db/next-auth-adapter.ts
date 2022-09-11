@@ -100,12 +100,28 @@ export default function PostgresAdapter(
       }
     },
 
-    async updateSession({ sessionToken }) {
-      return
+    async updateSession(session) {
+      const pool = await client
+
+      const { updateSession } = makeSessionFunctions(pool)
+      const updatedSession = await updateSession({
+        ...session,
+        expires: session.expires
+          ? DateTime.fromJSDate(session.expires)
+          : undefined
+      })
+
+      return adapterSession(updatedSession)
     },
 
     async deleteSession(sessionToken) {
-      return
+      const pool = await client
+
+      const { getSessionByToken, deleteSession } = makeSessionFunctions(pool)
+      const session = await getSessionByToken(sessionToken)
+      const result = await deleteSession(session.id)
+
+      return adapterSession(result)
     },
 
     async createVerificationToken({ identifier, expires, token }) {

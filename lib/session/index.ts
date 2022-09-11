@@ -27,7 +27,7 @@ export const createSessionInputSchema = z.object({
 
 export type CreateSessionInput = z.infer<typeof createSessionInputSchema>
 
-export type UpdateSessionInput = z.infer<typeof sessionSchema>
+export type UpdateSessionInput = Partial<z.infer<typeof sessionSchema>>
 
 export const makeSessionFunctions = (pool: DatabasePool) => ({
   async createSession({ userId, sessionToken, expires }: CreateSessionInput) {
@@ -47,7 +47,7 @@ export const makeSessionFunctions = (pool: DatabasePool) => ({
         Object.entries(sessionInput).map(([col, value]) => `${col} = ${value}`),
         sql.literalValue(', ')
       )}
-      WHERE id = ${sessionInput.id}
+      WHERE id = ${sessionInput.id as string}
       RETURNING id, user_id, session_token, expires;
     `)
 
@@ -65,6 +65,16 @@ export const makeSessionFunctions = (pool: DatabasePool) => ({
   async getSessionByToken(token: string) {
     const result = pool.one(sql.type(sessionSchema)`
         SELECT * FROM public.session WHERE session_token = ${token};
+    `)
+
+    return result
+  },
+
+  async deleteSession(id: string) {
+    const result = pool.one(sql.type(sessionSchema)`
+      DELETE FROM public.session
+      WHERE id = ${id}
+      RETURNING id, session_token, expires;
     `)
 
     return result
@@ -193,6 +203,41 @@ if (import.meta.vitest) {
       }
 
       const result = await getSession(testSession.id)
+
+      expect(result).toMatchObject(testSession)
+    })
+
+    it('deleteSession', async () => {
+      const id = randomUUID()
+      const userId = randomUUID()
+      const expires = DateTime.now()
+      const sessionToken = 'foobarbaz'
+
+      const query = vi.fn(async () =>
+        createMockQueryResult([
+          {
+            id,
+            user_id: userId,
+            session_token: sessionToken,
+            expires: expires.toSQL()
+          }
+        ])
+      )
+
+      const pool = createMockPool({
+        query
+      })
+
+      const { deleteSession } = makeSessionFunctions(pool)
+
+      const testSession = {
+        id,
+        userId,
+        sessionToken,
+        expires
+      }
+
+      const result = await deleteSession(testSession.id)
 
       expect(result).toMatchObject(testSession)
     })
