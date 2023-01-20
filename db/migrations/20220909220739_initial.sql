@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.user (
 
 CREATE TABLE IF NOT EXISTS public.account (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES public.user(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.user(id) ON DELETE CASCADE,
   type text,
   provider text,
   provider_account_id text,

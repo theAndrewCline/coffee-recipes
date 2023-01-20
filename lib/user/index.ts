@@ -2,28 +2,20 @@ import { randomUUID } from 'crypto'
 import { DateTime } from 'luxon'
 import { DatabasePool, sql } from 'slonik'
 import { z } from 'zod'
-import { Account } from '../account'
 
-export const userSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string(),
-    email_verified: z.string().optional()
-  })
-  .transform((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    emailVerified: u.email_verified
-  }))
+export const userSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  emailVerified: z.string().optional()
+})
 
 export type User = z.infer<typeof userSchema>
 
 export const createUserInputSchema = z.object({
   name: z.string(),
   email: z.string(),
-  emailVerified: z.string()
+  emailVerified: z.string().optional()
 })
 
 export type CreateUserInput = z.infer<typeof createUserInputSchema>
@@ -33,8 +25,13 @@ export type UpdateUserInput = Partial<z.infer<typeof userSchema>>
 export const makeUserFunctions = (pool: DatabasePool) => ({
   async createUser(userInput: CreateUserInput) {
     const result = pool.one(sql.type(userSchema)`
-      INSERT INTO public.user (name, email, email_verified)
-      VALUES (${userInput.name}, ${userInput.email}, ${userInput.emailVerified})
+      INSERT INTO public.user (${sql.join(
+        Object.keys(userInput).map((k) =>
+          k === 'emailVerified' ? 'email_verified' : k
+        ),
+        sql.literalValue(', ')
+      )})
+      VALUES (${sql.join(Object.values(userInput), sql.literalValue(', '))})
       RETURNING id, email, name, email_verified;
     `)
 
@@ -48,7 +45,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
         Object.entries(userInput).map(([col, value]) => `${col} = ${value}`),
         sql.literalValue(', ')
       )}
-      WHERE id = ${userInput.id}
+      WHERE id = ${userInput.id as string}
       RETURNING id, email, name, email_verified;
     `)
 
@@ -56,7 +53,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
   },
 
   async getUser(id: string) {
-    const result = pool.one(sql.type(userSchema)`
+    const result = pool.maybeOne(sql.type(userSchema)`
         SELECT * FROM public.user WHERE id = ${id};
     `)
 
@@ -64,7 +61,7 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
   },
 
   async getUserByEmail(email: string) {
-    const result = pool.one(sql.type(userSchema)`
+    const result = pool.maybeOne(sql.type(userSchema)`
         SELECT * FROM public.user WHERE email = ${email};
     `)
 
@@ -85,6 +82,16 @@ export const makeUserFunctions = (pool: DatabasePool) => ({
       WHERE
         a.providerAccountId = ${providerAccountId}
         && a.provider = ${provider};
+    `)
+
+    return result
+  },
+
+  async deleteUser(id: string) {
+    const result = pool.one(sql.type(userSchema)`
+      DELETE FROM public.user
+      WHERE id = ${id}
+      RETURNING id, email, name, email_verified;
     `)
 
     return result

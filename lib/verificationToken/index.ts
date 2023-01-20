@@ -5,15 +5,14 @@ import { z } from 'zod'
 
 export const verificationSchema = z
   .object({
-    id: z.string(),
     token: z.string(),
     identifier: z.string(),
-    expires: z.string()
+    expires: z.number()
   })
   .transform((s) => ({
     token: s.token,
     identifier: s.identifier,
-    expires: DateTime.fromSQL(s.expires)
+    expires: DateTime.fromMillis(s.expires)
   }))
 
 export type VerificationToken = z.infer<typeof verificationSchema>
@@ -38,7 +37,7 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
     token,
     expires
   }: CreateVerificationTokenInput) {
-    const result = pool.one(sql.type(verificationSchema)`
+    const result = await pool.one(sql.type(verificationSchema)`
       INSERT INTO public.verification_token (identifier, token, expires)
       VALUES (${identifier}, ${token}, ${expires})
       RETURNING id, identifier, token, expires;
@@ -51,7 +50,7 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
     verificationInput: UpdateVerificationTokenInput
   ) {
     const result = pool.one(sql.type(verificationSchema)`
-      UPDATE public.verification
+      UPDATE public.verification_token
       SET ${sql.join(
         Object.entries(verificationInput).map(
           ([col, value]) => `${col} = ${value}`
@@ -66,8 +65,8 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
   },
 
   async getVerificationToken(id: string) {
-    const result = pool.one(sql.type(verificationSchema)`
-        SELECT * FROM public.verification WHERE id = ${id};
+    const result = pool.maybeOne(sql.type(verificationSchema)`
+        SELECT * FROM public.verification_token WHERE id = ${id};
     `)
 
     return result
@@ -75,7 +74,7 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
 
   async deleteVerificationToken(identifier: string) {
     const result = pool.one(sql.type(verificationSchema)`
-      DELETE FROM public.verification
+      DELETE FROM public.verification_token
       WHERE identifier = ${identifier}
       RETURNING id, identifier, token, expires;
     `)
@@ -85,7 +84,7 @@ export const makeVerificationTokenFunctions = (pool: DatabasePool) => ({
 
   async listVerificationTokens() {
     const result = pool.many(sql.type(verificationSchema)`
-        SELECT * FROM public.verification;
+        SELECT * FROM public.verification_token;
     `)
 
     return result
@@ -154,7 +153,7 @@ if (import.meta.vitest) {
             id,
             identifier,
             token,
-            expires: expires.toSQL()
+            expires: expires.toMillis()
           }
         ])
       )
@@ -170,6 +169,8 @@ if (import.meta.vitest) {
         token,
         expires: expires
       })
+
+      expect(expectedResult).toEqual(result)
     })
 
     it('getVerificationToken', async () => {

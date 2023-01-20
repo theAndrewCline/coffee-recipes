@@ -1,11 +1,8 @@
 import { DateTime } from 'luxon'
-import {
-  Adapter,
-  AdapterSession,
-  AdapterUser,
-  VerificationToken
-} from 'next-auth/adapters'
+import { Account, Awaitable } from 'next-auth'
+import { Adapter, AdapterSession, AdapterUser } from 'next-auth/adapters'
 import { DatabasePool } from 'slonik'
+import { makeAccountFunctions } from '../lib/account'
 import { makeSessionFunctions, Session } from '../lib/session'
 import { CreateUserInput, makeUserFunctions, User } from '../lib/user'
 import { makeVerificationTokenFunctions } from '../lib/verificationToken'
@@ -41,7 +38,7 @@ export default function PostgresAdapter(
 
       const result = await getUser(id)
 
-      return adapterUser(result)
+      return result ? adapterUser(result) : result
     },
 
     async getUserByEmail(email: string) {
@@ -49,7 +46,7 @@ export default function PostgresAdapter(
 
       const result = await getUserByEmail(email)
 
-      return adapterUser(result)
+      return result ? adapterUser(result) : result
     },
 
     async getUserByAccount({ providerAccountId, provider }) {
@@ -69,12 +66,18 @@ export default function PostgresAdapter(
     },
 
     async deleteUser(userId) {
-      // const { deleteUser } = makeUserFunctions(await client)
-      // const result = await deleteUser(userId)
-      // return adapterUser(result)
+      const { deleteUser } = makeUserFunctions(await client)
+      const result = await deleteUser(userId)
+      return adapterUser(result)
     },
 
-    async linkAccount(account) {},
+    async linkAccount(account) {
+      const { createAccount } = makeAccountFunctions(await client)
+
+      const result = await createAccount(account)
+
+      return result as Awaitable<Account>
+    },
 
     async unlinkAccount({ providerAccountId, provider }) {},
 

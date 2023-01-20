@@ -1,18 +1,10 @@
 import NextAuth from 'next-auth'
 import EmailProvider from 'next-auth/providers/email'
 import { PostgresAdapter } from '../../../db'
-import { Pool } from 'pg'
-
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'default',
-  password: 'postgres',
-  port: 5432
-})
+import { createPool } from 'slonik'
 
 export default NextAuth({
-  adapter: PostgresAdapter(pool, {}) as any,
+  adapter: PostgresAdapter(createPool(process.env.DATABASE_URL as string)),
 
   providers: [
     EmailProvider({
